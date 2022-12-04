@@ -5,6 +5,7 @@ module.exports = {
   output: {
     path: path.join(__dirname, "/dist"), // the bundle output path
     filename: "bundle.js", // the name of the bundle
+    publicPath: '/', // the public path to load the bundle from
   },
   plugins: [
     new HtmlWebpackPlugin({
@@ -12,8 +13,11 @@ module.exports = {
     }),
   ],
   devServer: {
-    port: 3000, // you can change the port
+    hot: true,
+    port: 3000,
+    historyApiFallback: true,
   },
+  devtool : 'inline-source-map',
   module: {
     rules: [
       {
