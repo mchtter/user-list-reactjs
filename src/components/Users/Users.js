@@ -55,8 +55,6 @@ export default function Users() {
       setPageNumber(1);
       userList(search);
     } else if (search?.length < 3) {
-      setPageSize(2);
-      setPageNumber(1);
       userList();
     } else if (users === {}) {
       userList();
