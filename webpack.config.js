@@ -13,6 +13,7 @@ module.exports = {
     }),
   ],
   devServer: {
+    webSocketServer: false,
     hot: true,
     port: 3000,
     historyApiFallback: true,

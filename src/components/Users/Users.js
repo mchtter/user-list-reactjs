@@ -9,71 +9,83 @@ function useUser() {
   const dispatch = useDispatch();
   const user = useSelector((state) => state.user)
   const users = useSelector((state) => state.users)
+  const pageData = useSelector((state) => state.pageData)
+  const currentPage = useSelector((state) => state.currentPage)
   const loading = useSelector((state) => state.loading)
+  const search = useSelector((state) => state.search)
   const allUsersForSearch = useSelector((state) => state.allUsersForSearch)
   return {
     setUser: (user) => dispatch(actions.setUser(user)),
     setUsers: (users) => dispatch(actions.setUsers(users)),
+    setPageData: (pageData) => dispatch(actions.setPageData(pageData)),
+    setCurrentPage: (currentPage) => dispatch(actions.setCurrentPage(currentPage)),
     setLoading: (loading) => dispatch(actions.setLoading(loading)),
+    setSearch: (search) => dispatch(actions.setSearch(search)),
     setAllUsersForSearch: (allUsersForSearch) => dispatch(actions.setAllUsersForSearch(allUsersForSearch)),
     ...user,
     ...users,
+    ...pageData,
+    ...currentPage,
     ...loading,
+    ...search,
     ...allUsersForSearch
   }
 }
 
 export default function Users() {
-  const { users, loading, setUser, setUsers, setLoading} = useUser();
+  const {
+    users,
+    pageData,
+    currentPage,
+    loading,
+    allUsersForSearch,
+    setUser,
+    setUsers,
+    setPageData,
+    setCurrentPage,
+    setLoading,
+    setAllUsersForSearch
+  } = useUser();
 
-  const [pageData, setPageData] = React.useState({});
+  const getUserList = async (page = currentPage, pageSize = 2) => {
+    try {
 
-  const [pageNumber, setPageNumber] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(2);
+        setLoading(true);
 
-  const [searchInput, setSearchInput] = React.useState("");
-  const [search, setSearch] = React.useState("");
+        const res = await getUsers(page, pageSize);
+        const json = await res.json();
 
-  const userList = async (email) => {
-    setLoading(true);
-    const res = await getUsers(pageNumber, pageSize);
-    const json = await res.json();
-    if (email !== "" && email !== undefined) {
-      const filteredUsers = json.data.filter((user) => user.email.includes(email));
-      setUsers(filteredUsers);
-    } else {
-      setUsers(json.data);
+        setLoading(false);
+
+        return json;
+      
+    } catch (error) {
+      alert(error);
     }
-    
-    setPageData(json);
-    setLoading(false);
   };
 
   React.useEffect(() => {
-    if (search?.length >= 3) {
-      setPageSize(pageData.total);
-      setPageNumber(1);
-      userList(search);
-    } else if (search?.length < 3) {
-      userList();
-    } else if (users === {}) {
-      userList();
-    }
-  }, [pageNumber, search]);
+      getUserList().then((json) => {
+        setUsers(json.data);
+        setPageData(json);
+        if (allUsersForSearch.data === undefined) {
+          // API SERVICE hasn't search functionality so we need to store all users in redux store
+          getUserList(1, json.total).then((json) => {
+            setAllUsersForSearch(json);
+          })
+        }
+      });
+  }, [currentPage]);
 
   return (
     <div className="flex App">
       <h1>User List</h1>
-      <SearchBar 
-        searchInput={searchInput} 
-        setSearchInput={setSearchInput} 
-        setSearch={setSearch}
-      />
+      <SearchBar />
       <div className="flex">
         {loading ? (
           <div className="loader"></div>
         ) : (
-          users.map((user) => {
+          users?.map((user) => {
             return (
               <div className="card" key={user.id}>
                 <img key={user.avatar} src={user.avatar} />
@@ -89,20 +101,19 @@ export default function Users() {
       <div className="flex pagination-bar">
         <PaginationBar 
           pageData={pageData} 
-          setPageNumber={setPageNumber} 
+          setCurrentPage={setCurrentPage}
         />
       </div>
     </div>
   );
 }
 
-function PaginationBar({ pageData, setPageNumber }) {
+function PaginationBar({ pageData, setCurrentPage }) {
   const allPages = [];
   let totalElements = 5
   for (let i = 1; i <= pageData.total_pages; i++) {
     allPages.push(i);
   }
-
 
   const paginationBar = (page, totalPages) => {
     if (allPages.length <= totalElements) {
@@ -121,7 +132,6 @@ function PaginationBar({ pageData, setPageNumber }) {
     }
 
     pages.push(page)
-
     totalElements--;
 
     while (totalElements > 0) {
@@ -140,11 +150,11 @@ function PaginationBar({ pageData, setPageNumber }) {
 
   return (
     <>
-      <button onClick={() => setPageNumber(1)} disabled={pageData.page === 1}>
+      <button onClick={() => setCurrentPage(1)} disabled={pageData.page === 1}>
         &lt;&lt;
       </button>
       <button
-        onClick={() => setPageNumber(pageData.page - 1)}
+        onClick={() => setCurrentPage(pageData.page - 1)}
         disabled={pageData.page === 1}
       >
         &lt;
@@ -154,20 +164,20 @@ function PaginationBar({ pageData, setPageNumber }) {
         <button
           className={pageData.page == number ? "active" : ""}
           key={number}
-          onClick={() => setPageNumber(number)}
+          onClick={() => setCurrentPage(number)}
         >
           {number}
         </button>
       ))}
 
       <button
-        onClick={() => setPageNumber(pageData.page + 1)}
+        onClick={() => setCurrentPage(pageData.page + 1)}
         disabled={pageData.page === pageData.total_pages}
       >
         &gt;
       </button>
       <button
-        onClick={() => setPageNumber(pageData.total_pages)}
+        onClick={() => setCurrentPage(pageData.total_pages)}
         disabled={pageData.page === pageData.total_pages}
       >
         &gt;&gt;
@@ -176,11 +186,23 @@ function PaginationBar({ pageData, setPageNumber }) {
   );
 }
 
-function SearchBar({ searchInput, setSearchInput, setSearch }) {
+function SearchBar() {
+  const [searchInput, setSearchInput] = React.useState("");
   const [userWarn, setUserWarn] = React.useState(false);
+  const { setSearch, allUsersForSearch, setUsers, users, pageData, search } = useUser();
+
   function onChangeHandler(e) {
     setSearchInput(e.target.value);
   }
+
+  React.useEffect(() => {
+    if (search.length >= 3) {
+      const filteredUsers = allUsersForSearch.data.filter((user) => user.email.includes(search) ? user : null);
+      setUsers(filteredUsers);
+    } else if (search.length === 0) {
+      setUsers(pageData.data);
+    }
+  }, [search]);
 
   return (
     <div>

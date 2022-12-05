@@ -1,10 +1,13 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 export const user = {
-  allUsersForSearch: [],
+  allUsersForSearch: {},
   user: {},
   users: [],
+  pageData: {},
+  currentPage: 1,
   loading: true,
+  search: ""
 };
 
 const userSlice = createSlice({
@@ -14,18 +17,24 @@ const userSlice = createSlice({
     setAllUsersForSearch(state, action) {
       state.allUsersForSearch = action.payload;
     },
-
     setUser(state, { payload }) {
       state.user = payload;
-      state.loading = false;
     },
     setUsers(state, { payload }) {
       state.users = payload;
-      state.loading = false;
+    },
+    setPageData(state, { payload }) {
+      state.pageData = payload;
+    },
+    setCurrentPage(state, { payload }) {
+      state.currentPage = payload;
     },
     setLoading(state, { payload }) {
       state.loading = payload;
     },
+    setSearch(state, { payload }) {
+      state.search = payload;
+    }
   },
 });
 
